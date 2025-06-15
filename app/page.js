@@ -179,37 +179,46 @@ export default function DatasetVisualizer() {
             {showInstructions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
-          {/* Instructions Panel */}
           {showInstructions && (
-            <div className="absolute top-full right-0 mt-2 w-80 bg-white/10 border border-white/20 backdrop-blur-md rounded-lg p-4 text-white shadow-xl">
+            <div className="absolute top-full right-0 mt-2 w-80 bg-white/10 border border-white/20 backdrop-blur-md rounded-lg p-4 text-white shadow-xl z-50">
               <h4 className="text-sm font-semibold mb-3 text-blue-300">How to Use the Dataset Multiplier</h4>
               <div className="space-y-3 text-xs">
                 <div className="flex gap-2">
                   <span className="text-blue-400 font-bold">1.</span>
                   <span>
-                    Enter a dataset ID in the input field, or click on any example dataset below to auto-fill it.
+                    Paste your Hugging Face dataset ID (e.g. <code>siyavash/so101_test</code>) into the input field.
                   </span>
                 </div>
                 <div className="flex gap-2">
                   <span className="text-blue-400 font-bold">2.</span>
-                  <span>Click the "Multiply" button to process and expand your dataset.</span>
+                  <span>
+                    Click <strong>Multiply</strong>. We’ll find your videos and start augmenting them automatically.
+                  </span>
                 </div>
                 <div className="flex gap-2">
                   <span className="text-blue-400 font-bold">3.</span>
                   <span>
-                    Browse the example datasets to see what's available - each one can be multiplied to create larger
-                    training sets.
+                    Your dataset will appear below. 🟡 Yellow means it's still generating. 🟢 Green means it's done. 🔴
+                    Red means there was an error.
                   </span>
                 </div>
                 <div className="flex gap-2">
                   <span className="text-blue-400 font-bold">4.</span>
-                  <span>Use "Explore Open Datasets" to discover more robotics datasets from the community.</span>
+                  <span>Click any dataset to preview the original and generated videos side-by-side.</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-blue-400 font-bold">5.</span>
+                  <span>
+                    Once complete, download the full dataset from:
+                    <br />
+                    <code>lerobot/augmented_[your_dataset_id]</code>
+                  </span>
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-white/20">
                 <p className="text-xs text-gray-300">
-                  <span className="text-yellow-400">💡 Tip:</span> Dataset multiplication helps create larger, more
-                  diverse training sets for better robot learning.
+                  <span className="text-yellow-400">💡 Tip:</span> You can leave and come back later — progress is
+                  saved.
                 </p>
               </div>
             </div>
@@ -359,7 +368,12 @@ export default function DatasetVisualizer() {
                             <div className="p-4 flex items-center gap-3">
                               {/* Left gradient status dot */}
                               <div
-                                className={`w-3 h-3 rounded-full ${isComplete ? "bg-green-400" : "bg-yellow-400"} shadow-md flex-shrink-0`}
+                                className={`w-3 h-3 rounded-full ${isComplete
+                                  ? "bg-green-400"
+                                  : dataset.progress.toLowerCase() === "error"
+                                    ? "bg-red-400"
+                                    : "bg-yellow-400"
+                                  } shadow-md flex-shrink-0`}
                               />
 
                               {/* Dataset name */}
@@ -369,7 +383,12 @@ export default function DatasetVisualizer() {
 
                               {/* Right hover dot */}
                               <div
-                                className={`ml-auto w-2 h-2 rounded-full ${isComplete ? "bg-green-400" : "bg-yellow-400"} opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0`}
+                                className={`ml-auto w-2 h-2 rounded-full ${isComplete
+                                  ? "bg-green-400"
+                                  : dataset.progress.toLowerCase() === "error"
+                                    ? "bg-red-400"
+                                    : "bg-yellow-400"
+                                  } opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0`}
                               />
                             </div>
                           </div>
