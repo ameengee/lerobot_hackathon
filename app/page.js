@@ -1,7 +1,19 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Database, Zap, Sparkles, Bot, HelpCircle, ChevronDown, ChevronUp, Play, Search } from "lucide-react"
+import {
+  Database,
+  Zap,
+  Sparkles,
+  Bot,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  Play,
+  Search,
+  Loader2,
+  AlertCircle,
+} from "lucide-react"
 
 export default function DatasetVisualizer() {
   const [datasetId, setDatasetId] = useState("")
@@ -10,7 +22,10 @@ export default function DatasetVisualizer() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedOriginalVideo, setSelectedOriginalVideo] = useState(0)
   const [selectedMultipliedVideo, setSelectedMultipliedVideo] = useState(0)
-  const [datasets, setDatasets] = useState([]);
+  const [datasets, setDatasets] = useState([])
+  const [videoErrors, setVideoErrors] = useState(new Set())
+  const [videoLoading, setVideoLoading] = useState(new Set())
+  const [isMultiplying, setIsMultiplying] = useState(false)
 
   const onPageLoadAPI = async () => {
     console.log("starting page load sequence")
@@ -18,13 +33,14 @@ export default function DatasetVisualizer() {
       const res = await fetch("/api/onPageLoad")
       const data = await res.json()
 
-      console.log(data);
-      console.log(data[0].database_id);
+      console.log(data)
+      console.log(data[0].database_id)
 
       setDatasets(data)
-      //setSelectedDataset(data[0])
+      return data // Return the data so it can be used elsewhere
     } catch (error) {
       console.error("Failed to fetch datasets:", error)
+      return [] // Return empty array on error
     }
   }
 
@@ -32,22 +48,110 @@ export default function DatasetVisualizer() {
     onPageLoadAPI()
   }, [])
 
-  const handleMultiply = () => {
-    console.log(5);
+  const handleMultiply = async () => {
+    if (!datasetId.trim()) return alert("Please enter a dataset ID")
+
+    // Check if dataset already exists
+    const existingDataset = datasets.find((dataset) => dataset.database_id.toLowerCase() === datasetId.toLowerCase())
+
+    if (existingDataset) {
+      alert("This dataset already exists! Please enter a different dataset ID.")
+      setDatasetId("")
+      return
+    }
+
+    setIsMultiplying(true) // Start loading
+
+    try {
+      const res = await fetch("/api/scan-dataset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataset_id: datasetId }),
+      })
+
+      if (!res.ok) throw new Error("Scan failed.")
+
+      const { old_video_links, new_video_links } = await res.json()
+
+      const dbRes = await fetch("/api/submitDataset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          database_id: datasetId,
+          progress: "in_progress",
+          old_video_links,
+          new_video_links,
+        }),
+      })
+
+      if (dbRes.ok) {
+        // Refresh datasets and automatically select the new one
+        const updatedDatasets = await onPageLoadAPI()
+        const newDataset = updatedDatasets.find((dataset) => dataset.database_id === datasetId)
+
+        if (newDataset) {
+          setSelectedDataset(newDataset)
+          setSelectedOriginalVideo(0)
+          setSelectedMultipliedVideo(0)
+          setDatasetId("") // Clear the input field
+        }
+      } else {
+        alert("Failed to submit dataset to database.")
+      }
+    } catch (err) {
+      console.error("❌ handleMultiply error:", err)
+      alert("Something went wrong. Check console.")
+    } finally {
+      setIsMultiplying(false) // End loading
+    }
   }
 
-  const filteredDatasets = datasets.filter((dataset) =>
-    dataset.database_id.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredDatasets = datasets.filter((dataset) => {
+    const matchesSearch = dataset.database_id.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesDatasetId =
+      datasetId.trim() === "" || dataset.database_id.toLowerCase().includes(datasetId.toLowerCase())
+    return matchesSearch && matchesDatasetId
+  })
 
   const handleOriginalVideoChange = (index) => {
     setSelectedOriginalVideo(index)
     setSelectedMultipliedVideo(index) // sync
   }
 
+  const handleVideoError = (index) => {
+    setVideoErrors((prev) => new Set(prev).add(index))
+    setVideoLoading((prev) => {
+      const newSet = new Set(prev)
+      newSet.delete(index)
+      return newSet
+    })
+  }
+
+  const handleVideoLoad = (index) => {
+    setVideoLoading((prev) => {
+      const newSet = new Set(prev)
+      newSet.delete(index)
+      return newSet
+    })
+  }
+
   const handleMultipliedVideoChange = (index) => {
     setSelectedMultipliedVideo(index)
-    setSelectedOriginalVideo(index) // sync
+    setSelectedOriginalVideo(index)
+
+    // Clear any previous error for this index
+    setVideoErrors((prev) => {
+      const newSet = new Set(prev)
+      newSet.delete(index)
+      return newSet
+    })
+
+    // Mark as loading
+    setVideoLoading((prev) => {
+      const newSet = new Set(prev)
+      newSet.add(index)
+      return newSet
+    })
   }
 
   return (
@@ -148,18 +252,24 @@ export default function DatasetVisualizer() {
                 className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-gray-300 backdrop-blur-md focus:bg-white/20 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all duration-300"
               />
             </div>
-            <button
-              onClick={handleMultiply}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-3 min-w-[120px] rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-            >
-              <Zap className="w-4 h-4" />
-              Multiply
-            </button>
+            {isMultiplying ? (
+              <div className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-3 min-w-[120px] rounded-lg shadow-lg">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing...
+              </div>
+            ) : (
+              <button
+                onClick={handleMultiply}
+                className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-3 min-w-[120px] rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-400/50"
+              >
+                <Zap className="w-4 h-4" />
+                Multiply
+              </button>
+            )}
           </div>
 
           {/* Main Content Area with Videos */}
           <div className="flex items-start justify-center gap-8 mb-8">
-
             {/* Left Video */}
             <div
               className={`transition-all duration-500 mt-16 ${selectedDataset ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-8 pointer-events-none"
@@ -232,16 +342,16 @@ export default function DatasetVisualizer() {
                   <div className="flex flex-col gap-3 px-4 py-2">
                     {filteredDatasets.length > 0 ? (
                       filteredDatasets.map((dataset, index) => {
-                        const isSelected = selectedDataset?.id === dataset.id;
-                        const isComplete = dataset.progress.toLowerCase() === "complete";
+                        const isSelected = selectedDataset?.id === dataset.id
+                        const isComplete = dataset.progress.toLowerCase() === "complete"
 
                         return (
                           <div
                             key={index}
                             onClick={() => {
-                              setSelectedDataset(dataset);
-                              setSelectedOriginalVideo(0);
-                              setSelectedMultipliedVideo(0);
+                              setSelectedDataset(dataset)
+                              setSelectedOriginalVideo(0)
+                              setSelectedMultipliedVideo(0)
                             }}
                             className={`bg-white/10 border backdrop-blur-md cursor-pointer hover:bg-white/20 transition-all duration-300 transform hover:scale-105 hover:shadow-lg group rounded-lg ${isSelected ? "border-blue-400 bg-white/20" : "border-white/20"
                               }`}
@@ -249,7 +359,7 @@ export default function DatasetVisualizer() {
                             <div className="p-4 flex items-center gap-3">
                               {/* Left gradient status dot */}
                               <div
-                                className={`w-3 h-3 rounded-full ${isComplete ? "bg-green-400" : "bg-red-400"} shadow-md flex-shrink-0`}
+                                className={`w-3 h-3 rounded-full ${isComplete ? "bg-green-400" : "bg-yellow-400"} shadow-md flex-shrink-0`}
                               />
 
                               {/* Dataset name */}
@@ -259,17 +369,15 @@ export default function DatasetVisualizer() {
 
                               {/* Right hover dot */}
                               <div
-                                className={`ml-auto w-2 h-2 rounded-full ${isComplete ? "bg-green-400" : "bg-red-400"} opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0`}
+                                className={`ml-auto w-2 h-2 rounded-full ${isComplete ? "bg-green-400" : "bg-yellow-400"} opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0`}
                               />
                             </div>
                           </div>
-                        );
+                        )
                       })
                     ) : (
                       <div className="text-center py-8">
-                        <p className="text-gray-400 text-sm">
-                          No datasets found matching "{searchQuery}"
-                        </p>
+                        <p className="text-gray-400 text-sm">No datasets found matching "{searchQuery}"</p>
                       </div>
                     )}
                   </div>
@@ -298,32 +406,63 @@ export default function DatasetVisualizer() {
                     >
                       {selectedDataset.new_video_links.map((url, index) => (
                         <option key={index} value={index} className="bg-gray-800 text-white">
-                          episode_{index}
+                          episode_{index} {videoErrors.has(index) ? " (Generating...)" : ""}
                         </option>
                       ))}
                     </select>
                   </div>
 
                   {/* Video Player */}
-                  <div className="relative rounded-lg overflow-hidden bg-black/20">
-                    <video
-                      key={selectedDataset.new_video_links[selectedMultipliedVideo]} // force reload on change
-                      src={selectedDataset.new_video_links[selectedMultipliedVideo]}
-                      title={`Multiplied Dataset Episode ${selectedMultipliedVideo}`}
-                      className="w-full h-68"
-                      controls
-                      autoPlay
-                      muted
-                      loop
-                      preload="metadata"
-                    >
-                      Your browser does not support the video tag.
-                    </video>
+                  <div className="relative rounded-lg overflow-hidden bg-black/20 h-68 flex items-center justify-center">
+                    {videoErrors.has(selectedMultipliedVideo) ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-white/80 p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <Loader2 className="w-6 h-6 text-orange-400 animate-spin" />
+                          <AlertCircle className="w-5 h-5 text-orange-400" />
+                        </div>
+                        <h5 className="text-lg font-semibold mb-2 text-center">Currently Generating Your Data</h5>
+                        <p className="text-sm text-white/60 text-center leading-relaxed">
+                          This episode is being processed. Please check back in a few minutes.
+                        </p>
+                        <div className="mt-4 w-full bg-white/10 rounded-full h-1">
+                          <div className="bg-gradient-to-r from-orange-400 to-orange-500 h-1 rounded-full animate-pulse w-3/4"></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {videoLoading.has(selectedMultipliedVideo) && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
+                            <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
+                          </div>
+                        )}
+                        <video
+                          key={selectedDataset.new_video_links[selectedMultipliedVideo]}
+                          src={selectedDataset.new_video_links[selectedMultipliedVideo]}
+                          title={`Multiplied Dataset Episode ${selectedMultipliedVideo}`}
+                          className="w-full h-full object-cover"
+                          controls
+                          autoPlay
+                          muted
+                          loop
+                          preload="metadata"
+                          onError={() => handleVideoError(selectedMultipliedVideo)}
+                          onLoadedData={() => handleVideoLoad(selectedMultipliedVideo)}
+                          onLoadStart={() =>
+                            setVideoLoading((prev) => {
+                              const newSet = new Set(prev)
+                              newSet.add(selectedMultipliedVideo)
+                              return newSet
+                            })
+                          }
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
             </div>
-
           </div>
         </div>
       </div>
