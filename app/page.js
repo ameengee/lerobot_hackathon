@@ -361,6 +361,9 @@ export default function DatasetVisualizer() {
                               setSelectedDataset(dataset)
                               setSelectedOriginalVideo(0)
                               setSelectedMultipliedVideo(0)
+                              // Clear video error and loading states when switching datasets
+                              setVideoErrors(new Set())
+                              setVideoLoading(new Set())
                             }}
                             className={`bg-white/10 border backdrop-blur-md cursor-pointer hover:bg-white/20 transition-all duration-300 transform hover:scale-105 hover:shadow-lg group rounded-lg ${isSelected ? "border-blue-400 bg-white/20" : "border-white/20"
                               }`}
