@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Mail,
   Users,
+  Linkedin,
 } from "lucide-react"
 
 export default function DatasetVisualizer() {
@@ -31,8 +32,9 @@ export default function DatasetVisualizer() {
   const [videoLoading, setVideoLoading] = useState(new Set())
   const [isMultiplying, setIsMultiplying] = useState(false)
 
-  // Separate state variables for modal and server status
+  // Separate state variables for modals and server status
   const [showServerDownModal, setShowServerDownModal] = useState(true)
+  const [showContactModal, setShowContactModal] = useState(false)
   const [serverDown, setServerDown] = useState(true)
 
   // Helper function to extract dataset ID from Hugging Face URL or return the input as-is
@@ -225,7 +227,7 @@ export default function DatasetVisualizer() {
             <p className="text-white/80 text-center leading-relaxed">
               Servers are down - check out our work from this weekend and sign up on waitlist{" "}
               <a
-                href="https://example.com/waitlist" // Replace with actual waitlist URL
+                href="https://forms.gle/axgXSdmVpZWcrADi9"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:text-blue-300 underline inline-flex items-center gap-1 transition-colors"
@@ -248,6 +250,74 @@ export default function DatasetVisualizer() {
         </div>
       )}
 
+      {/* Contact Modal */}
+      {showContactModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowContactModal(false)} />
+
+          {/* Modal Content */}
+          <div className="relative bg-white/10 border border-white/20 backdrop-blur-md rounded-xl p-8 max-w-md mx-4 shadow-2xl">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowContactModal(false)}
+              className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Icon */}
+            <div className="flex justify-center mb-6">
+              <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
+                <Linkedin className="w-8 h-8 text-white" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h2 className="text-xl font-bold text-white text-center mb-6">{"Founder's LinkedIns"}</h2>
+
+            {/* LinkedIn Links */}
+            <div className="space-y-4">
+              <a
+                href="https://www.linkedin.com/in/seanwu2027/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 bg-white/10 border border-white/20 rounded-lg p-4 hover:bg-white/20 transition-all duration-300 group"
+              >
+                <div className="p-2 bg-blue-600 rounded-full">
+                  <Linkedin className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-medium">Sean Wu</p>
+                  <p className="text-white/60 text-sm group-hover:text-white/80 transition-colors">
+                    linkedin.com/in/seanwu2027
+                  </p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" />
+              </a>
+
+              <a
+                href="https://www.linkedin.com/in/ameengee/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 bg-white/10 border border-white/20 rounded-lg p-4 hover:bg-white/20 transition-all duration-300 group"
+              >
+                <div className="p-2 bg-blue-600 rounded-full">
+                  <Linkedin className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-medium">Ameen Gee</p>
+                  <p className="text-white/60 text-sm group-hover:text-white/80 transition-colors">
+                    linkedin.com/in/ameengee
+                  </p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="absolute inset-0 bg-[url('/placeholder.svg?height=1080&width=1920')] opacity-10" />
@@ -262,13 +332,13 @@ export default function DatasetVisualizer() {
       {/* Top Navigation */}
       <div className="absolute top-6 left-6 right-6 z-20 flex justify-between items-center">
         {/* Contact Us Button - Top Left */}
-        <a
-          href="mailto:contact@example.com" // Replace with actual contact email
+        <button
+          onClick={() => setShowContactModal(true)}
           className="flex items-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white px-4 py-2 rounded-lg hover:bg-white/20 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
         >
           <Mail className="w-4 h-4" />
           <span className="text-sm">Contact Us</span>
-        </a>
+        </button>
 
         {/* Instructions Dropdown - Top Right */}
         <div className="relative">
@@ -354,7 +424,7 @@ export default function DatasetVisualizer() {
 
             {/* Waitlist Link */}
             <a
-              href="https://forms.gle/axgXSdmVpZWcrADi9" // Replace with actual waitlist URL
+              href="https://forms.gle/axgXSdmVpZWcrADi9"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-400/50 shadow-lg"
