@@ -15,6 +15,8 @@ import {
   AlertCircle,
   X,
   ExternalLink,
+  Mail,
+  Users,
 } from "lucide-react"
 
 export default function DatasetVisualizer() {
@@ -29,8 +31,9 @@ export default function DatasetVisualizer() {
   const [videoLoading, setVideoLoading] = useState(new Set())
   const [isMultiplying, setIsMultiplying] = useState(false)
 
-  // Hardcoded state variable for server down modal
+  // Separate state variables for modal and server status
   const [showServerDownModal, setShowServerDownModal] = useState(true)
+  const [serverDown, setServerDown] = useState(true)
 
   // Helper function to extract dataset ID from Hugging Face URL or return the input as-is
   const extractDatasetId = (input) => {
@@ -71,7 +74,12 @@ export default function DatasetVisualizer() {
   }, [])
 
   const handleMultiply = async () => {
-    if (showServerDownModal) return alert("servers are currently down");
+    // Check if servers are down first
+    if (serverDown) {
+      alert("Servers are currently down. Please check out our work from this weekend and sign up on our waitlist!")
+      return
+    }
+
     if (!datasetId.trim()) return alert("Please enter a dataset ID or Hugging Face URL")
 
     // Extract dataset ID from URL if needed
@@ -217,7 +225,7 @@ export default function DatasetVisualizer() {
             <p className="text-white/80 text-center leading-relaxed">
               Servers are down - check out our work from this weekend and sign up on waitlist{" "}
               <a
-                href="https://forms.gle/fzKsJuDtDYjvb2gdA" // Replace with actual waitlist URL
+                href="https://example.com/waitlist" // Replace with actual waitlist URL
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:text-blue-300 underline inline-flex items-center gap-1 transition-colors"
@@ -251,8 +259,18 @@ export default function DatasetVisualizer() {
         <div className="absolute bottom-32 left-1/4 w-40 h-40 bg-gradient-to-r from-green-400/20 to-blue-400/20 rounded-full blur-xl animate-pulse delay-2000" />
       </div>
 
-      {/* Instructions Dropdown - Top Right */}
-      <div className="absolute top-6 right-6 z-20">
+      {/* Top Navigation */}
+      <div className="absolute top-6 left-6 right-6 z-20 flex justify-between items-center">
+        {/* Contact Us Button - Top Left */}
+        <a
+          href="mailto:contact@example.com" // Replace with actual contact email
+          className="flex items-center gap-2 bg-white/10 border border-white/20 backdrop-blur-md text-white px-4 py-2 rounded-lg hover:bg-white/20 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
+        >
+          <Mail className="w-4 h-4" />
+          <span className="text-sm">Contact Us</span>
+        </a>
+
+        {/* Instructions Dropdown - Top Right */}
         <div className="relative">
           <button
             onClick={() => setShowInstructions(!showInstructions)}
@@ -324,13 +342,35 @@ export default function DatasetVisualizer() {
             </h1>
           </div>
 
-          {/* Subtitle with Icon */}
-          <div className="flex items-center justify-center gap-2 mb-12">
-            <Sparkles className="w-5 h-5 text-yellow-400" />
-            <p className="text-lg md:text-xl bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-semibold border-b-2 border-gradient-to-r from-blue-400 to-cyan-400 inline-block pb-1">
-              Grow your datasets with the click of a button
-            </p>
-            <Sparkles className="w-5 h-5 text-yellow-400" />
+          {/* Subtitle with Icon and Waitlist Link */}
+          <div className="flex flex-col items-center justify-center gap-4 mb-12">
+            <div className="flex items-center justify-center gap-2">
+              <Sparkles className="w-5 h-5 text-yellow-400" />
+              <p className="text-lg md:text-xl bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-semibold border-b-2 border-gradient-to-r from-blue-400 to-cyan-400 inline-block pb-1">
+                Grow your datasets with the click of a button
+              </p>
+              <Sparkles className="w-5 h-5 text-yellow-400" />
+            </div>
+
+            {/* Waitlist Link */}
+            <a
+              href="https://forms.gle/axgXSdmVpZWcrADi9" // Replace with actual waitlist URL
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-400/50 shadow-lg"
+            >
+              <Users className="w-4 h-4" />
+              <span className="text-sm font-medium">Join Our Waitlist</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+
+            {/* Server Status Indicator */}
+            {serverDown && (
+              <div className="flex items-center gap-2 bg-red-500/20 border border-red-500/30 backdrop-blur-md text-red-300 px-4 py-2 rounded-lg">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm">Servers are currently down</span>
+              </div>
+            )}
           </div>
 
           {/* Input Section */}
@@ -344,6 +384,7 @@ export default function DatasetVisualizer() {
                 onChange={(e) => setDatasetId(e.target.value)}
                 onClick={(e) => e.key === "Enter" && handleMultiply()}
                 className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-gray-300 backdrop-blur-md focus:bg-white/20 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all duration-300"
+                disabled={serverDown}
               />
             </div>
             {isMultiplying ? (
@@ -354,7 +395,11 @@ export default function DatasetVisualizer() {
             ) : (
               <button
                 onClick={handleMultiply}
-                className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-3 min-w-[120px] rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-400/50"
+                disabled={serverDown}
+                className={`flex items-center justify-center gap-2 px-8 py-3 min-w-[120px] rounded-lg shadow-lg transition-all duration-300 transform focus:outline-none focus:ring-2 focus:ring-orange-400/50 ${serverDown
+                  ? "bg-gray-500 text-gray-300 cursor-not-allowed"
+                  : "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white hover:shadow-xl hover:scale-105"
+                  }`}
               >
                 <Zap className="w-4 h-4" />
                 Multiply
