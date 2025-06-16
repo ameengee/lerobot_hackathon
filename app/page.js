@@ -13,6 +13,8 @@ import {
   Search,
   Loader2,
   AlertCircle,
+  X,
+  ExternalLink,
 } from "lucide-react"
 
 export default function DatasetVisualizer() {
@@ -26,6 +28,26 @@ export default function DatasetVisualizer() {
   const [videoErrors, setVideoErrors] = useState(new Set())
   const [videoLoading, setVideoLoading] = useState(new Set())
   const [isMultiplying, setIsMultiplying] = useState(false)
+
+  // Hardcoded state variable for server down modal
+  const [showServerDownModal, setShowServerDownModal] = useState(true)
+
+  // Helper function to extract dataset ID from Hugging Face URL or return the input as-is
+  const extractDatasetId = (input) => {
+    const trimmedInput = input.trim()
+
+    // Check if it's a Hugging Face URL
+    const hfUrlPattern = /https?:\/\/huggingface\.co\/datasets\/(.+)/
+    const match = trimmedInput.match(hfUrlPattern)
+
+    if (match) {
+      // Extract the dataset ID from the URL (everything after /datasets/)
+      return match[1].replace(/\/$/, "") // Remove trailing slash if present
+    }
+
+    // If it's not a URL, return the input as-is (assuming it's already a dataset ID)
+    return trimmedInput
+  }
 
   const onPageLoadAPI = async () => {
     console.log("starting page load sequence")
@@ -49,10 +71,16 @@ export default function DatasetVisualizer() {
   }, [])
 
   const handleMultiply = async () => {
-    if (!datasetId.trim()) return alert("Please enter a dataset ID")
+    if (showServerDownModal) return alert("servers are currently down");
+    if (!datasetId.trim()) return alert("Please enter a dataset ID or Hugging Face URL")
+
+    // Extract dataset ID from URL if needed
+    const processedDatasetId = extractDatasetId(datasetId)
 
     // Check if dataset already exists
-    const existingDataset = datasets.find((dataset) => dataset.database_id.toLowerCase() === datasetId.toLowerCase())
+    const existingDataset = datasets.find(
+      (dataset) => dataset.database_id.toLowerCase() === processedDatasetId.toLowerCase(),
+    )
 
     if (existingDataset) {
       alert("This dataset already exists! Please enter a different dataset ID.")
@@ -66,7 +94,7 @@ export default function DatasetVisualizer() {
       const res = await fetch("/api/scan-dataset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dataset_id: datasetId }),
+        body: JSON.stringify({ dataset_id: processedDatasetId }),
       })
 
       if (!res.ok) throw new Error("Scan failed.")
@@ -77,7 +105,7 @@ export default function DatasetVisualizer() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          database_id: datasetId,
+          database_id: processedDatasetId,
           progress: "in_progress",
           old_video_links,
           new_video_links,
@@ -87,7 +115,7 @@ export default function DatasetVisualizer() {
       if (dbRes.ok) {
         // Refresh datasets and automatically select the new one
         const updatedDatasets = await onPageLoadAPI()
-        const newDataset = updatedDatasets.find((dataset) => dataset.database_id === datasetId)
+        const newDataset = updatedDatasets.find((dataset) => dataset.database_id === processedDatasetId)
 
         if (newDataset) {
           setSelectedDataset(newDataset)
@@ -156,6 +184,62 @@ export default function DatasetVisualizer() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* Server Down Modal */}
+      {showServerDownModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowServerDownModal(false)}
+          />
+
+          {/* Modal Content */}
+          <div className="relative bg-white/10 border border-white/20 backdrop-blur-md rounded-xl p-8 max-w-md mx-4 shadow-2xl">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowServerDownModal(false)}
+              className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Icon */}
+            <div className="flex justify-center mb-6">
+              <div className="p-3 bg-gradient-to-r from-red-500 to-orange-500 rounded-full">
+                <AlertCircle className="w-8 h-8 text-white" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h2 className="text-xl font-bold text-white text-center mb-4">Servers Are Down</h2>
+
+            {/* Message */}
+            <p className="text-white/80 text-center leading-relaxed">
+              Servers are down - check out our work from this weekend and sign up on waitlist{" "}
+              <a
+                href="https://forms.gle/fzKsJuDtDYjvb2gdA" // Replace with actual waitlist URL
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline inline-flex items-center gap-1 transition-colors"
+              >
+                here
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </p>
+
+            {/* Optional: Action Button */}
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => setShowServerDownModal(false)}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="absolute inset-0 bg-[url('/placeholder.svg?height=1080&width=1920')] opacity-10" />
@@ -186,13 +270,14 @@ export default function DatasetVisualizer() {
                 <div className="flex gap-2">
                   <span className="text-blue-400 font-bold">1.</span>
                   <span>
-                    Paste your Hugging Face dataset ID (e.g. <code>siyavash/so101_test</code>) into the input field.
+                    Paste your Hugging Face dataset ID (e.g. <code>siyavash/so101_test</code>) or full URL (e.g.{" "}
+                    <code>https://huggingface.co/datasets/siyavash/so101_test</code>) into the input field.
                   </span>
                 </div>
                 <div className="flex gap-2">
                   <span className="text-blue-400 font-bold">2.</span>
                   <span>
-                    Click <strong>Multiply</strong>. We’ll find your videos and start augmenting them automatically.
+                    Click <strong>Multiply</strong>. We'll find your videos and start augmenting them automatically.
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -254,7 +339,7 @@ export default function DatasetVisualizer() {
               <Database className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Enter dataset id (e.g. lerobot)"
+                placeholder="Enter dataset ID or Hugging Face URL"
                 value={datasetId}
                 onChange={(e) => setDatasetId(e.target.value)}
                 onClick={(e) => e.key === "Enter" && handleMultiply()}
